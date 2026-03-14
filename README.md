@@ -56,7 +56,7 @@ pip install -r requirements.txt
 
 ### 2. Set your Anthropic API key
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
+export OPENAI_API_KEY=sk-ant-...
 ```
 
 ### 3a. Run the Streamlit app (recommended)
@@ -87,7 +87,6 @@ python cli_demo.py --load
 | ChromaDB storage | `rag_graph.py` → `Chroma.from_documents()` |
 | Similarity search | `rag_graph.py` → `vectorstore.similarity_search()` |
 | Prompt construction | `rag_graph.py` → `generate()` |
-| Claude API call | `rag_graph.py` → `anthropic.Anthropic().messages.create()` |
 
 ---
 
@@ -109,5 +108,5 @@ python cli_demo.py --load
 - **LangChain** — PDF loading, text splitting utilities
 - **ChromaDB** — Local vector database for storing embeddings
 - **HuggingFace Sentence Transformers** — Free local embeddings
-- **Anthropic Claude** — LLM for answer generation
+- **Open AI** — LLM for answer generation
 - **Streamlit** — Simple Python web UI
