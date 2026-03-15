@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RAG · LangChain · LangGraph — Full Course</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/theme/black.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;600;800;900&family=Lato:wght@300;400&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#03060f; --surface:#080d1a; --card:#0c1221; --card2:#101828;
+  --border:rgba(56,189,248,.12);
+  --b1:#38bdf8; --b2:#4ade80; --b3:#fb923c; --b4:#f472b6; --b5:#a78bfa;
+  --tx:#e2e8f0; --mu:#64748b;
+  --mono:'JetBrains Mono',monospace;
+  --head:'Outfit',sans-serif;
+  --body:'Lato',sans-serif;
+}
+.reveal-viewport { background:var(--bg); }
+.reveal { font-family:var(--body); color:var(--tx); font-size:22px; }
+.reveal h1,.reveal h2,.reveal h3,.reveal h4,.reveal h5 {
+  font-family:var(--head); text-transform:none; letter-spacing:-.02em; margin:0;
+}
+.reveal .slides section { box-sizing:border-box; padding:44px 52px; text-align:left; height:100%; }
+.reveal .progress { color:var(--b1); height:3px; }
+.reveal .controls { color:var(--b1); }
+.reveal .slide-number { font-family:var(--mono); font-size:.5em; background:transparent; color:var(--mu); }
+.reveal-viewport::after {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image:linear-gradient(rgba(56,189,248,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.025) 1px,transparent 1px);
+  background-size:48px 48px;
+}
+.orb { position:absolute; border-radius:50%; pointer-events:none; filter:blur(80px); animation:breathe 6s ease-in-out infinite; }
+@keyframes breathe { 0%,100%{opacity:.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.12)} }
+
+/* ── ATOMS ── */
+.eyebrow { font-family:var(--mono); font-size:.6em; color:var(--b1); letter-spacing:.2em; text-transform:uppercase; margin-bottom:10px; opacity:.85; }
+.grad { background:linear-gradient(120deg,var(--tx) 0%,var(--b1) 60%,var(--b2) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.sec-num { font-family:var(--head); font-size:9em; font-weight:900; color:rgba(56,189,248,.04); position:absolute; right:30px; bottom:-20px; line-height:1; pointer-events:none; }
+.stitle { font-size:2em; font-weight:800; margin-bottom:20px; color:var(--tx); }
+.sdesc  { font-size:.9em; color:var(--mu); line-height:1.7; margin-bottom:14px; }
+.bquote { font-family:var(--head); font-size:1.2em; font-weight:600; line-height:1.45; border-left:3px solid var(--b1); padding:12px 18px; margin:16px 0; background:rgba(56,189,248,.04); border-radius:0 8px 8px 0; }
+
+/* cards */
+.card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px 22px; position:relative; overflow:hidden; }
+.card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+.c1::before{background:var(--b1);} .c2::before{background:var(--b2);} .c3::before{background:var(--b3);} .c4::before{background:var(--b4);} .c5::before{background:var(--b5);}
+.card-icon { font-size:1.5em; margin-bottom:8px; }
+.card h4 { font-size:.95em; font-weight:700; margin-bottom:6px; color:var(--tx); }
+.card p  { font-size:.8em; color:var(--mu); margin:0; line-height:1.65; }
+.card .pos { font-size:.76em; color:var(--b2); margin-top:8px; }
+
+/* grids */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;}
+
+/* pill list */
+.plist{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:9px;}
+.plist li{display:flex;align-items:flex-start;gap:11px;font-size:.9em;line-height:1.6;}
+.bul{flex-shrink:0;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.65em;font-weight:700;margin-top:1px;}
+.bu1{background:rgba(56,189,248,.15);color:var(--b1);} .bu2{background:rgba(74,222,128,.15);color:var(--b2);} .bu3{background:rgba(251,146,60,.15);color:var(--b3);} .bu4{background:rgba(244,114,182,.15);color:var(--b4);} .bu5{background:rgba(167,139,250,.15);color:var(--b5);}
+
+/* flow */
+.flow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:10px 0;}
+.fbox{font-family:var(--mono);font-size:.72em;padding:8px 14px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--tx);white-space:nowrap;}
+.fb1{border-color:rgba(56,189,248,.4);color:var(--b1);background:rgba(56,189,248,.06);}
+.fb2{border-color:rgba(74,222,128,.4);color:var(--b2);background:rgba(74,222,128,.06);}
+.fb3{border-color:rgba(251,146,60,.4);color:var(--b3);background:rgba(251,146,60,.06);}
+.fb4{border-color:rgba(244,114,182,.4);color:var(--b4);background:rgba(244,114,182,.06);}
+.fb5{border-color:rgba(167,139,250,.4);color:var(--b5);background:rgba(167,139,250,.06);}
+.farr{color:var(--mu);font-size:.9em;}
+
+/* arch */
+.arch{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-top:12px;}
+.arow{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap;}
+.anode{padding:7px 14px;border-radius:6px;font-family:var(--mono);font-size:.7em;font-weight:700;white-space:nowrap;}
+.an1{background:rgba(56,189,248,.1);color:var(--b1);border:1px solid rgba(56,189,248,.3);}
+.an2{background:rgba(74,222,128,.1);color:var(--b2);border:1px solid rgba(74,222,128,.3);}
+.an3{background:rgba(251,146,60,.1);color:var(--b3);border:1px solid rgba(251,146,60,.3);}
+.an4{background:rgba(244,114,182,.1);color:var(--b4);border:1px solid rgba(244,114,182,.3);}
+.an5{background:rgba(167,139,250,.1);color:var(--b5);border:1px solid rgba(167,139,250,.3);}
+.ang{background:rgba(100,116,139,.1);color:var(--mu);border:1px solid rgba(100,116,139,.3);}
+.aarr{color:var(--mu);font-size:1em;}
+.adiv{border:none;border-top:1px dashed rgba(255,255,255,.06);margin:12px 0;}
+
+/* code */
+.cb{background:#060b16;border:1px solid rgba(56,189,248,.1);border-radius:10px;padding:16px 20px;font-family:var(--mono);font-size:.68em;line-height:1.8;overflow-x:auto;margin:12px 0;position:relative;}
+.cb-label{position:absolute;top:10px;right:14px;font-family:var(--mono);font-size:.7em;color:var(--mu);}
+.kw{color:#c792ea;} .fn{color:var(--b1);} .st{color:var(--b2);} .cm{color:#3d5266;font-style:italic;} .vr{color:var(--b3);} .nm{color:var(--b4);} .cl{color:#ffcb6b;}
+
+/* table */
+.ctbl{width:100%;border-collapse:collapse;font-size:.82em;margin-top:8px;}
+.ctbl th{font-family:var(--mono);font-size:.8em;color:var(--mu);text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);font-weight:400;letter-spacing:.08em;}
+.ctbl td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top;line-height:1.5;}
+.ctbl tr:last-child td{border-bottom:none;}
+.good{color:var(--b2);} .bad{color:var(--b4);} .ok{color:var(--b3);}
+.lbl{font-family:var(--mono);font-size:.85em;color:var(--mu);}
+
+/* split */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px;}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;}
+.panel h4{font-family:var(--head);font-size:.88em;font-weight:700;margin-bottom:12px;}
+
+/* comp cards */
+.ccard{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:10px;}
+.ccard:last-child{margin-bottom:0;}
+.ctitle{font-family:var(--head);font-size:.95em;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.cdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.ccard p{font-size:.8em;color:var(--mu);margin:0 0 6px;line-height:1.6;}
+.csub{font-family:var(--mono);font-size:.68em;color:var(--b1);border-top:1px solid rgba(255,255,255,.05);padding-top:8px;margin-top:6px;}
+
+/* title / divider slides */
+.title-slide{display:flex!important;flex-direction:column;justify-content:center;overflow:hidden;position:relative;}
+.title-slide h1{font-size:3.8em;font-weight:900;line-height:1.02;margin-bottom:16px;}
+.title-tags{display:flex;gap:9px;margin-top:26px;flex-wrap:wrap;}
+.ttag{font-family:var(--mono);font-size:.6em;padding:5px 13px;border-radius:4px;border:1px solid;letter-spacing:.05em;}
+.tt1{color:var(--b1);border-color:rgba(56,189,248,.35);background:rgba(56,189,248,.05);}
+.tt2{color:var(--b2);border-color:rgba(74,222,128,.35);background:rgba(74,222,128,.05);}
+.tt3{color:var(--b3);border-color:rgba(251,146,60,.35);background:rgba(251,146,60,.05);}
+.tt4{color:var(--b4);border-color:rgba(244,114,182,.35);background:rgba(244,114,182,.05);}
+.tt5{color:var(--b5);border-color:rgba(167,139,250,.35);background:rgba(167,139,250,.05);}
+.div-slide{display:flex!important;flex-direction:column;justify-content:center;position:relative;overflow:hidden;}
+.div-slide h2{font-size:3em;font-weight:900;line-height:1.05;}
+.div-bar{width:50px;height:4px;border-radius:2px;margin-bottom:18px;}
+.div-desc{font-size:.92em;color:var(--mu);margin-top:14px;max-width:520px;line-height:1.7;}
+
+/* rag arch layers */
+.rag-arch{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+.rag-layer{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 18px;}
+.rag-lbl{font-family:var(--mono);font-size:.52em;color:var(--mu);letter-spacing:.1em;writing-mode:vertical-lr;text-transform:uppercase;margin-right:10px;opacity:.7;white-space:nowrap;}
+.rag-conn{display:flex;justify-content:flex-start;padding-left:32px;color:var(--mu);font-size:.75em;margin:2px 0;}
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ══ SLIDE 1 — TITLE ══════════════════════════════════ -->
+<section class="title-slide">
+  <div class="orb" style="width:500px;height:500px;background:radial-gradient(circle,rgba(56,189,248,.1),transparent 70%);top:-150px;right:-100px;"></div>
+  <div class="orb" style="width:350px;height:350px;background:radial-gradient(circle,rgba(74,222,128,.07),transparent 70%);bottom:-80px;left:-80px;animation-delay:3s;"></div>
+  <div class="eyebrow">// AI Engineering · Full Course</div>
+  <h1><span class="grad">Retrieval-<br/>Augmented<br/>Generation</span></h1>
+  <p style="font-size:.9em;color:var(--mu);max-width:560px;line-height:1.7;margin-top:8px;">
+    From <em>why LLMs fail</em> to building a production-grade RAG app with
+    <strong style="color:var(--tx)">LangChain</strong>,
+    <strong style="color:var(--tx)">LangGraph</strong> &
+    <strong style="color:var(--tx)">ChromaDB</strong>.
+  </p>
+  <div class="title-tags">
+    <span class="ttag tt1">RAG</span>
+    <span class="ttag tt2">LangChain</span>
+    <span class="ttag tt3">LangGraph</span>
+    <span class="ttag tt4">ChromaDB</span>
+    <span class="ttag tt5">GPT-4o</span>
+  </div>
+</section>
+
+<!-- ══ SLIDE 2 — COURSE MAP ═════════════════════════════ -->
+<section>
+  <div class="eyebrow">// roadmap</div>
+  <h2 class="stitle">What We'll Cover</h2>
+  <div class="g2" style="gap:12px;">
+    <div class="card c4"><div class="card-icon">🤔</div><h4>01 — Why RAG Is Needed</h4><p>The gaps LLMs have out-of-the-box and why they matter.</p></div>
+    <div class="card c3"><div class="card-icon">⚠️</div><h4>02 — Problems RAG Solves</h4><p>Hallucination, stale data, private knowledge, retraining cost.</p></div>
+    <div class="card c1"><div class="card-icon">🏗️</div><h4>03 — What Is RAG + Architecture</h4><p>Full pipeline diagram — every component visualised.</p></div>
+    <div class="card c2"><div class="card-icon">🔍</div><h4>04 — RAG Components Deep Dive</h4><p>Loaders, splitters, embeddings, vector stores, retrieval, generation.</p></div>
+    <div class="card c5"><div class="card-icon">🔗</div><h4>05 — LangChain &amp; LangGraph</h4><p>The frameworks that wire everything together.</p></div>
+    <div class="card c1"><div class="card-icon">💻</div><h4>06 — Code Demo</h4><p>Live walkthrough of the working Book Q&amp;A RAG app.</p></div>
+  </div>
+</section>
+
+<!-- ══ DIVIDER 1 ═════════════════════════════════════════ -->
+<section class="div-slide">
+  <div class="orb" style="width:400px;height:400px;background:radial-gradient(circle,rgba(244,114,182,.1),transparent 70%);top:-80px;right:-80px;"></div>
+  <div class="div-bar" style="background:var(--b4);"></div>
+  <h2 style="color:var(--b4);">Why RAG<br/>Is Needed</h2>
+  <p class="div-desc">Before we build, we need to understand the fundamental problem — and why it's not fixable by just asking the LLM better questions.</p>
+  <div class="sec-num">01</div>
+</section>
+
+<!-- ══ SLIDE 4 — LLM PROMISE ════════════════════════════ -->
+<section>
+  <div class="eyebrow">// the context</div>
+  <h2 class="stitle">LLMs Are Incredibly Powerful — But…</h2>
+  <div class="bquote">An LLM is like a genius who <em>read everything ever written</em> — but was locked in a room at a fixed point in time, with no access to anything new.</div>
+  <ul class="plist" style="margin-top:18px;">
+    <li><span class="bul bu2">✓</span><span>Can write code, reason, summarise, translate, plan — at expert level</span></li>
+    <li><span class="bul bu2">✓</span><span>Trained on terabytes: Wikipedia, books, code, Stack Overflow, the web…</span></li>
+    <li><span class="bul bu4">✗</span><span><strong style="color:var(--tx)">Zero knowledge of anything after the training cutoff date</strong></span></li>
+    <li><span class="bul bu4">✗</span><span><strong style="color:var(--tx)">Zero access to your company's private documents — ever</strong></span></li>
+    <li><span class="bul bu4">✗</span><span><strong style="color:var(--tx)">When it doesn't know, it invents — confidently and convincingly</strong></span></li>
+  </ul>
+</section>
+
+<!-- ══ SLIDE 5 — KNOWLEDGE GAP ══════════════════════════ -->
+<section>
+  <div class="eyebrow">// the fundamental gap</div>
+  <h2 class="stitle">The Knowledge Gap</h2>
+  <div class="arch" style="margin-top:0;">
+    <div style="display:grid;grid-template-columns:1fr 48px 1fr;align-items:center;gap:10px;">
+      <div style="background:rgba(74,222,128,.05);border:1px solid rgba(74,222,128,.2);border-radius:10px;padding:16px 20px;">
+        <div style="font-family:var(--mono);font-size:.58em;color:var(--b2);margin-bottom:10px;letter-spacing:.1em;">✓ WHAT LLM KNOWS</div>
+        <ul class="plist">
+          <li><span class="bul bu2" style="font-size:.7em;">✓</span><span style="font-size:.73em;">Public internet up to training cutoff</span></li>
+          <li><span class="bul bu2" style="font-size:.7em;">✓</span><span style="font-size:.73em;">Books, papers, Wikipedia, GitHub</span></li>
+          <li><span class="bul bu2" style="font-size:.7em;">✓</span><span style="font-size:.73em;">General reasoning and code patterns</span></li>
+        </ul>
+      </div>
+      <div style="text-align:center;color:var(--mu);font-size:1.6em;">⟷</div>
+      <div style="background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.2);border-radius:10px;padding:16px 20px;">
+        <div style="font-family:var(--mono);font-size:.58em;color:var(--b4);margin-bottom:10px;letter-spacing:.1em;">✗ WHAT LLM DOESN'T KNOW</div>
+        <ul class="plist">
+          <li><span class="bul bu4" style="font-size:.7em;">✗</span><span style="font-size:.73em;">Your company's internal documents</span></li>
+          <li><span class="bul bu4" style="font-size:.7em;">✗</span><span style="font-size:.73em;">Events &amp; news after training cutoff</span></li>
+          <li><span class="bul bu4" style="font-size:.7em;">✗</span><span style="font-size:.73em;">Your PDFs, databases, emails, codebases</span></li>
+        </ul>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:16px;font-family:var(--mono);font-size:.6em;color:var(--b1);">↓ &nbsp; RAG fills this gap — without retraining &nbsp; ↓</div>
+  </div>
+</section>
+
+<!-- ══ DIVIDER 2 ═════════════════════════════════════════ -->
+<section class="div-slide">
+  <div class="orb" style="width:400px;height:400px;background:radial-gradient(circle,rgba(251,146,60,.1),transparent 70%);top:-80px;right:-80px;"></div>
+  <div class="div-bar" style="background:var(--b3);"></div>
+  <h2 style="color:var(--b3);">Problems<br/>RAG Solves</h2>
+  <p class="div-desc">Four specific, concrete failure modes of vanilla LLMs — and how RAG addresses each one directly.</p>
+  <div class="sec-num">02</div>
+</section>
+
+<!-- ══ SLIDE 7 — 4 PROBLEMS ════════════════════════════ -->
+<section>
+  <div class="eyebrow">// four failure modes</div>
+  <h2 class="stitle">4 Problems, 1 Solution</h2>
+  <div class="g2">
+    <div class="card c4">
+      <div class="card-icon">🌀</div>
+      <h4>Problem 1 — Hallucination</h4>
+      <p>LLMs fabricate facts when they don't know the answer. They present invented information with complete confidence — hard to detect, dangerous in production.</p>
+      <p class="pos">✓ RAG: answer is grounded in retrieved source text. Nothing invented.</p>
+    </div>
+    <div class="card c3">
+      <div class="card-icon">📅</div>
+      <h4>Problem 2 — Stale Knowledge</h4>
+      <p>GPT-4o cannot answer about events after its training cutoff. New products, recent policy changes, this week's news — all invisible to it.</p>
+      <p class="pos">✓ RAG: update your document store — answers update instantly, no retraining.</p>
+    </div>
+    <div class="card c5">
+      <div class="card-icon">🔒</div>
+      <h4>Problem 3 — No Private Data</h4>
+      <p>Your internal docs, customer records, proprietary research — none of it was in the training data. You can't ask GPT about your own company's specifics.</p>
+      <p class="pos">✓ RAG: ingest any private data into a local vector store.</p>
+    </div>
+    <div class="card c1">
+      <div class="card-icon">💸</div>
+      <h4>Problem 4 — Fine-tuning Cost</h4>
+      <p>Retraining on custom data costs thousands of dollars, weeks of compute time, and ML expertise. Every data update requires another full training run.</p>
+      <p class="pos">✓ RAG: no training at all. Just update the documents.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 8 — COMPARISON TABLE ══════════════════════ -->
+<section>
+  <div class="eyebrow">// rag vs alternatives</div>
+  <h2 class="stitle">RAG vs Fine-tuning vs Prompt Stuffing</h2>
+  <table class="ctbl">
+    <thead>
+      <tr><th>Approach</th><th>Private Data?</th><th>Live Updates?</th><th>Hallucination</th><th>Cost</th><th>Best For</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="lbl">Vanilla LLM</span></td><td class="bad">✗ No</td><td class="bad">✗ Never</td><td class="bad">High</td><td class="good">Free</td><td>General chat</td></tr>
+      <tr><td><span class="lbl">Prompt Stuffing</span></td><td class="ok">~ Limited</td><td class="ok">~ Manual</td><td class="ok">Medium</td><td class="ok">Medium</td><td>Short docs &lt;100KB</td></tr>
+      <tr><td><span class="lbl">Fine-tuning</span></td><td class="ok">~ Frozen</td><td class="bad">✗ Expensive</td><td class="ok">Medium</td><td class="bad">Very High</td><td>Style / tone only</td></tr>
+      <tr><td><span class="lbl" style="color:var(--b1);">RAG ← winner</span></td><td class="good">✓ Yes</td><td class="good">✓ Instantly</td><td class="good">Low</td><td class="good">Low</td><td><strong>Any knowledge base</strong></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ══ DIVIDER 3 ═════════════════════════════════════════ -->
+<section class="div-slide">
+  <div class="orb" style="width:400px;height:400px;background:radial-gradient(circle,rgba(56,189,248,.1),transparent 70%);top:-80px;right:-80px;"></div>
+  <div class="div-bar" style="background:var(--b1);"></div>
+  <h2 style="color:var(--b1);">What Is RAG +<br/>Architecture</h2>
+  <p class="div-desc">The full picture — definition, two phases, and every component in the pipeline visualised end-to-end.</p>
+  <div class="sec-num">03</div>
+</section>
+
+<!-- ══ SLIDE 10 — RAG DEFINITION ════════════════════════ -->
+<section>
+  <div class="eyebrow">// definition</div>
+  <h2 class="stitle">What Is RAG?</h2>
+  <div class="bquote"><strong>Retrieval-Augmented Generation</strong> — give the LLM a <em>cheat sheet</em> of relevant facts right before it answers, so it never has to guess.</div>
+  <p class="sdesc" style="margin-top:14px;">RAG has two distinct phases. <strong style="color:var(--tx)">Indexing</strong> happens once (or when docs change). <strong style="color:var(--tx)">Retrieval + Generation</strong> happens on every user query.</p>
+  <div class="g2">
+    <div class="card c1">
+      <div class="card-icon">📥</div>
+      <h4>Phase 1 — Indexing <span style="font-family:var(--mono);font-size:.7em;color:var(--b1);background:rgba(56,189,248,.1);padding:1px 6px;border-radius:3px;">offline</span></h4>
+      <p>Load documents → split into chunks → convert to embedding vectors → store in vector database. Runs once when setting up, or when documents are updated.</p>
+    </div>
+    <div class="card c2">
+      <div class="card-icon">🔎</div>
+      <h4>Phase 2 — Retrieval + Generation <span style="font-family:var(--mono);font-size:.7em;color:var(--b2);background:rgba(74,222,128,.1);padding:1px 6px;border-radius:3px;">every query</span></h4>
+      <p>User asks a question → embed the question → find similar chunk vectors → inject top chunks into the LLM prompt → LLM generates a grounded answer.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 11 — FULL ARCHITECTURE ════════════════════ -->
+<section>
+  <div class="eyebrow">// architecture diagram</div>
+  <h2 class="stitle">RAG Pipeline — End to End</h2>
+  <div class="rag-arch">
+    <div class="rag-layer" style="border-color:rgba(56,189,248,.25);">
+      <div class="rag-lbl" style="color:var(--b1);">INDEXING</div>
+      <div class="flow" style="margin:0;flex:1;">
+        <div class="fbox fb1">📄 Raw Docs<br/><span style="font-size:.82em;color:var(--mu);">PDF/CSV/Web</span></div>
+        <span class="farr">→</span>
+        <div class="fbox fb1">✂️ Splitter<br/><span style="font-size:.82em;color:var(--mu);">chunks</span></div>
+        <span class="farr">→</span>
+        <div class="fbox fb1">🧮 Embeddings<br/><span style="font-size:.82em;color:var(--mu);">vectors</span></div>
+        <span class="farr">→</span>
+        <div class="fbox fb1" style="border-color:rgba(56,189,248,.7);">🗄️ Vector Store<br/><span style="font-size:.82em;color:var(--mu);">ChromaDB</span></div>
+      </div>
+    </div>
+    <div class="rag-conn">↕ persisted to disk</div>
+    <div class="rag-layer" style="border-color:rgba(74,222,128,.25);">
+      <div class="rag-lbl" style="color:var(--b2);">RETRIEVAL</div>
+      <div class="flow" style="margin:0;flex:1;">
+        <div class="fbox fb2">👤 User Query</div>
+        <span class="farr">→</span>
+        <div class="fbox fb2">🧮 Embed Query<br/><span style="font-size:.82em;color:var(--mu);">same model</span></div>
+        <span class="farr">→</span>
+        <div class="fbox fb2">🔍 Cosine Search<br/><span style="font-size:.82em;color:var(--mu);">similarity</span></div>
+        <span class="farr">→</span>
+        <div class="fbox fb2" style="border-color:rgba(74,222,128,.7);">📋 Top-K Chunks<br/><span style="font-size:.82em;color:var(--mu);">relevant context</span></div>
+      </div>
+    </div>
+    <div class="rag-conn">↕ combine</div>
+    <div class="rag-layer" style="border-color:rgba(251,146,60,.25);">
+      <div class="rag-lbl" style="color:var(--b3);">GENERATION</div>
+      <div class="flow" style="margin:0;flex:1;">
+        <div class="fbox fb3">📋 Chunks</div>
+        <span class="farr">+</span>
+        <div class="fbox fb3">👤 Query</div>
+        <span class="farr">→</span>
+        <div class="fbox fb3">📝 Prompt Builder</div>
+        <span class="farr">→</span>
+        <div class="fbox fb3">🤖 GPT-4o</div>
+        <span class="farr">→</span>
+        <div class="fbox fb3" style="border-color:rgba(251,146,60,.7);">✅ Grounded Answer</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ DIVIDER 4 ═════════════════════════════════════════ -->
+<section class="div-slide">
+  <div class="orb" style="width:400px;height:400px;background:radial-gradient(circle,rgba(74,222,128,.1),transparent 70%);top:-80px;right:-80px;"></div>
+  <div class="div-bar" style="background:var(--b2);"></div>
+  <h2 style="color:var(--b2);">RAG Components<br/>Deep Dive</h2>
+  <p class="div-desc">Each component in the pipeline explained — what it is, what it does, why it matters, and how to use it.</p>
+  <div class="sec-num">04</div>
+</section>
+
+<!-- ══ SLIDE 13 — LOADER ════════════════════════════════ -->
+<section>
+  <div class="eyebrow">// component 1 · document loader</div>
+  <h2 class="stitle">📄 Document Loader</h2>
+  <p class="sdesc">Entry point of the pipeline. Reads raw data from any source and converts it into a standard <code style="color:var(--b1);font-family:var(--mono);font-size:.9em;">Document</code> object with <code style="color:var(--b1);font-family:var(--mono);font-size:.9em;">page_content</code> + <code style="color:var(--b1);font-family:var(--mono);font-size:.9em;">metadata</code>.</p>
+  <div class="g2">
+    <div>
+      <div class="ccard">
+        <div class="ctitle"><div class="cdot" style="background:var(--b1);"></div>Available Loaders</div>
+        <div class="flow" style="margin:0;gap:6px;flex-wrap:wrap;">
+          <div class="fbox fb1" style="font-size:.56em;">PyPDFLoader</div>
+          <div class="fbox fb2" style="font-size:.56em;">CSVLoader</div>
+          <div class="fbox fb3" style="font-size:.56em;">WebBaseLoader</div>
+          <div class="fbox fb4" style="font-size:.56em;">NotionLoader</div>
+          <div class="fbox fb5" style="font-size:.56em;">SQLLoader</div>
+        </div>
+      </div>
+      <div class="ccard">
+        <div class="ctitle"><div class="cdot" style="background:var(--b2);"></div>What you get back</div>
+        <p>A list of <code style="font-family:var(--mono);color:var(--b2);">Document</code> objects. Each has:<br/>
+        • <code style="font-family:var(--mono);color:var(--b1);">page_content</code> — the raw text<br/>
+        • <code style="font-family:var(--mono);color:var(--b1);">metadata</code> — source, page number, etc.</p>
+      </div>
+    </div>
+    <div class="cb" style="margin:0;font-size:.57em;">
+<span class="cm"># Load a PDF — returns one Document per page</span>
+<span class="kw">from</span> langchain_community.document_loaders \
+  <span class="kw">import</span> <span class="fn">PyPDFLoader</span>
+
+loader = <span class="fn">PyPDFLoader</span>(<span class="st">"book.pdf"</span>)
+pages  = loader.<span class="fn">load</span>()
+
+<span class="vr">print</span>(<span class="fn">len</span>(pages))
+<span class="cm"># → 250  (one Document per page)</span>
+
+<span class="vr">print</span>(pages[<span class="nm">0</span>].page_content[:<span class="nm">100</span>])
+<span class="cm"># → "Chapter 1: Design Patterns..."</span>
+
+<span class="vr">print</span>(pages[<span class="nm">0</span>].metadata)
+<span class="cm"># → {"source": "book.pdf", "page": 0}</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 14 — SPLITTER ══════════════════════════════ -->
+<section>
+  <div class="eyebrow">// component 2 · text splitter</div>
+  <h2 class="stitle">✂️ Text Splitter</h2>
+  <p class="sdesc">Splits large documents into smaller, <em>overlapping</em> chunks that fit the LLM context window and can be retrieved with precision.</p>
+  <div class="g2">
+    <div>
+      <div class="ccard">
+        <div class="ctitle"><div class="cdot" style="background:var(--b3);"></div>Why overlap matters</div>
+        <p>Without overlap, a sentence spanning a chunk boundary would be split in half and lose meaning. Overlap ensures context is always preserved.</p>
+      </div>
+      <div class="ccard">
+        <div class="ctitle"><div class="cdot" style="background:var(--b2);"></div>Sweet spot</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;">
+          <div style="background:rgba(244,114,182,.05);border:1px solid rgba(244,114,182,.2);border-radius:6px;padding:10px;font-size:.65em;">
+            <div style="color:var(--b4);margin-bottom:4px;">Too Large</div>
+            <div style="color:var(--mu);">Noisy retrieval, hits context limits</div>
+          </div>
+          <div style="background:rgba(251,146,60,.05);border:1px solid rgba(251,146,60,.2);border-radius:6px;padding:10px;font-size:.65em;">
+            <div style="color:var(--b3);margin-bottom:4px;">Too Small</div>
+            <div style="color:var(--mu);">Loses context, misses answers</div>
+          </div>
+        </div>
+        <p style="margin-top:8px;color:var(--b2);">✓ 500–1500 chars, 10–20% overlap</p>
+      </div>
+    </div>
+    <div class="cb" style="margin:0;font-size:.57em;">
+<span class="kw">from</span> langchain_text_splitters <span class="kw">import</span> \
+  <span class="fn">RecursiveCharacterTextSplitter</span>
+
+<span class="cm"># Tries separators in order — respects</span>
+<span class="cm"># natural text boundaries</span>
+splitter = <span class="fn">RecursiveCharacterTextSplitter</span>(
+  chunk_size    = <span class="nm">1000</span>,  <span class="cm"># max chars per chunk</span>
+  chunk_overlap = <span class="nm">200</span>,   <span class="cm"># shared chars at edges</span>
+  separators    = [<span class="st">"\n\n"</span>, <span class="st">"\n"</span>, <span class="st">"."</span>, <span class="st">" "</span>],
+)
+
+chunks = splitter.<span class="fn">split_documents</span>(pages)
+<span class="vr">print</span>(<span class="fn">len</span>(chunks))  <span class="cm"># 250 pages → ~800 chunks</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 15 — EMBEDDINGS ════════════════════════════ -->
+<section>
+  <div class="eyebrow">// component 3 · embeddings</div>
+  <h2 class="stitle">🧮 Embeddings</h2>
+  <p class="sdesc">Converts text into a vector of numbers that captures <em>semantic meaning</em>. Texts with similar meaning produce vectors that are mathematically close together.</p>
+  <div class="g2">
+    <div>
+      <div class="ccard">
+        <div class="ctitle"><div class="cdot" style="background:var(--b5);"></div>The key insight</div>
+        <p>"automobile" and "car" produce very similar vectors — even though the words are different. This is <strong style="color:var(--tx)">semantic similarity</strong>, not keyword matching.</p>
+      </div>
+      <div class="ccard">
+        <div class="ctitle"><div class="cdot" style="background:var(--b3);"></div>Critical rule</div>
+        <p>You must use the <strong style="color:var(--tx)">exact same embedding model</strong> for:<br/>
+        • Encoding chunks during indexing<br/>
+        • Encoding the user query at runtime<br/><br/>
+        Mixing models will give wrong results.</p>
+      </div>
+    </div>
+    <div class="cb" style="margin:0;font-size:.57em;">
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> <span class="fn">OpenAIEmbeddings</span>
+
+embeddings = <span class="fn">OpenAIEmbeddings</span>(
+  model=<span class="st">"text-embedding-3-small"</span>
+)
+
+<span class="cm"># Embed one query → list of floats</span>
+vec = embeddings.<span class="fn">embed_query</span>(<span class="st">"What is Singleton?"</span>)
+<span class="vr">print</span>(<span class="fn">len</span>(vec))    <span class="cm"># → 1536 numbers</span>
+<span class="vr">print</span>(vec[:<span class="nm">3</span>])   <span class="cm"># → [0.023, -0.187, 0.412]</span>
+
+<span class="cm"># Texts with similar meaning → similar vectors</span>
+<span class="cm"># "car" ≈ "automobile" ≈ "vehicle"</span>
+<span class="cm"># → their vectors are close in 1536-D space</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 16 — VECTOR STORE ══════════════════════════ -->
+<section>
+  <div class="eyebrow">// component 4 · vector store</div>
+  <h2 class="stitle">🗄️ Vector Store (ChromaDB)</h2>
+  <p class="sdesc">A database purpose-built for storing and searching embedding vectors. It answers: <em>"find me the K chunks most similar to this query vector."</em></p>
+  <div class="g2">
+    <div>
+      <div class="ccard">
+        <div class="ctitle"><div class="cdot" style="background:var(--b2);"></div>How similarity search works</div>
+        <p>Computes <strong style="color:var(--tx)">cosine similarity</strong> between the query vector and every stored chunk vector. Returns the top-K chunks — most semantically relevant to the question.</p>
+      </div>
+      <div class="ccard">
+        <div class="ctitle"><div class="cdot" style="background:var(--b1);"></div>Popular vector stores</div>
+        <div class="flow" style="margin:0;gap:6px;flex-wrap:wrap;">
+          <div class="fbox fb2" style="font-size:.56em;">ChromaDB — local free</div>
+          <div class="fbox fb1" style="font-size:.56em;">Pinecone — cloud prod</div>
+          <div class="fbox fb3" style="font-size:.56em;">FAISS — Meta fast</div>
+          <div class="fbox fb5" style="font-size:.56em;">Weaviate — OSS</div>
+        </div>
+      </div>
+    </div>
+    <div class="cb" style="margin:0;font-size:.57em;">
+<span class="kw">from</span> langchain_community.vectorstores <span class="kw">import</span> <span class="fn">Chroma</span>
+
+<span class="cm"># Store chunks + their embeddings</span>
+vectorstore = <span class="fn">Chroma</span>.<span class="fn">from_documents</span>(
+  documents        = chunks,
+  embedding        = embeddings,
+  collection_name  = <span class="st">"book_rag"</span>,
+  persist_directory= <span class="st">"./chroma_db"</span>,
+)
+
+<span class="cm"># Search: find 4 most relevant chunks</span>
+results = vectorstore.<span class="fn">similarity_search</span>(
+  <span class="st">"What is the Observer pattern?"</span>, k=<span class="nm">4</span>
+)
+
+<span class="kw">for</span> doc <span class="kw">in</span> results:
+  <span class="vr">print</span>(doc.page_content[:<span class="nm">80</span>], <span class="st">"..."</span>)
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 17 — RETRIEVER + PROMPT ════════════════════ -->
+<section>
+  <div class="eyebrow">// component 5 &amp; 6 · retriever + prompt</div>
+  <h2 class="stitle">🔍 Retriever &amp; 📝 Prompt Builder</h2>
+  <div class="g2">
+    <div>
+      <div class="ccard">
+        <div class="ctitle"><div class="cdot" style="background:var(--b1);"></div>Retriever</div>
+        <p>A thin wrapper around the vector store. Takes a query string, runs similarity search, returns relevant Document objects. Can add score thresholds, re-ranking, or hybrid search.</p>
+        <div class="csub">retriever = vectorstore.as_retriever(search_kwargs={"k": 4})</div>
+      </div>
+      <div class="ccard">
+        <div class="ctitle"><div class="cdot" style="background:var(--b3);"></div>Prompt structure</div>
+        <div style="background:rgba(251,146,60,.05);border:1px solid rgba(251,146,60,.2);border-radius:6px;padding:12px;margin-top:6px;font-family:var(--mono);font-size:.6em;line-height:1.75;">
+          <span style="color:var(--b3);">SYSTEM:</span> Answer using ONLY the context. If unsure say "I don't know."<br/><br/>
+          <span style="color:var(--b3);">CONTEXT:</span> {chunk 1 text}<br/>
+          ———<br/>
+          {chunk 2 text}...<br/><br/>
+          <span style="color:var(--b3);">QUESTION:</span> {user query}<br/>
+          <span style="color:var(--b3);">ANSWER:</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="ccard">
+        <div class="ctitle"><div class="cdot" style="background:var(--b2);"></div>Why prompt structure matters</div>
+        <ul class="plist" style="gap:7px;">
+          <li><span class="bul bu2">1</span><span style="font-size:.72em;">Instructing "ONLY the context" prevents the model from using its own training data</span></li>
+          <li><span class="bul bu2">2</span><span style="font-size:.72em;">"Say I don't know" if not in context prevents hallucination</span></li>
+          <li><span class="bul bu2">3</span><span style="font-size:.72em;">Context placed <em>before</em> the question gets better LLM attention</span></li>
+          <li><span class="bul bu3">!</span><span style="font-size:.72em;">Prompt quality directly determines answer quality</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ DIVIDER 5 ═════════════════════════════════════════ -->
+<section class="div-slide">
+  <div class="orb" style="width:400px;height:400px;background:radial-gradient(circle,rgba(167,139,250,.1),transparent 70%);top:-80px;right:-80px;"></div>
+  <div class="div-bar" style="background:var(--b5);"></div>
+  <h2 style="color:var(--b5);">LangChain &amp;<br/>LangGraph</h2>
+  <p class="div-desc">LangChain gives you the components. LangGraph gives you the orchestration. Together they build powerful, controllable AI pipelines.</p>
+  <div class="sec-num">05</div>
+</section>
+
+<!-- ══ SLIDE 19 — LANGCHAIN DETAIL ══════════════════════ -->
+<section>
+  <div class="eyebrow">// langchain in detail</div>
+  <h2 class="stitle">LangChain — The Component Library</h2>
+  <p class="sdesc">Standardises every part of an LLM app so you can swap any piece without rewriting. Think: LEGO bricks — each brick has the same connector, mix and match freely.</p>
+  <div class="g2" style="gap:10px;">
+    <div class="card c1">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><div style="font-size:1.2em;">📄</div><div style="font-family:var(--head);font-size:.8em;font-weight:700;color:var(--b1);">Document Loaders</div></div>
+      <p>100+ integrations. PDF, CSV, URL, Notion, SQL, S3, YouTube, GitBook…</p>
+      <div style="font-family:var(--mono);font-size:.58em;color:var(--b1);margin-top:8px;">langchain_community.document_loaders</div>
+    </div>
+    <div class="card c2">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><div style="font-size:1.2em;">✂️</div><div style="font-family:var(--head);font-size:.8em;font-weight:700;color:var(--b2);">Text Splitters</div></div>
+      <p>Split by character, token, sentence, markdown header, or HTML structure.</p>
+      <div style="font-family:var(--mono);font-size:.58em;color:var(--b2);margin-top:8px;">langchain_text_splitters</div>
+    </div>
+    <div class="card c3">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><div style="font-size:1.2em;">🧮</div><div style="font-family:var(--head);font-size:.8em;font-weight:700;color:var(--b3);">Embeddings</div></div>
+      <p>OpenAI, HuggingFace, Cohere, Mistral, Google — plug and play, same API.</p>
+      <div style="font-family:var(--mono);font-size:.58em;color:var(--b3);margin-top:8px;">langchain_openai.OpenAIEmbeddings</div>
+    </div>
+    <div class="card c4">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><div style="font-size:1.2em;">🗄️</div><div style="font-family:var(--head);font-size:.8em;font-weight:700;color:var(--b4);">Vector Stores</div></div>
+      <p>ChromaDB, FAISS, Pinecone, Weaviate — all use the same retriever interface.</p>
+      <div style="font-family:var(--mono);font-size:.58em;color:var(--b4);margin-top:8px;">langchain_community.vectorstores</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 20 — LANGGRAPH OVERVIEW ════════════════════ -->
+<section>
+  <div class="eyebrow">// langgraph in detail</div>
+  <h2 class="stitle">LangGraph — Graph-Based Workflows</h2>
+  <p class="sdesc">LangGraph extends LangChain with a graph execution model — enabling <strong style="color:var(--tx)">stateful workflows</strong> with loops, branching, and multi-step agent reasoning.</p>
+  <div class="split" style="margin-top:0;">
+    <div class="panel">
+      <h4 style="color:var(--mu);">❌ Linear Chain (LangChain)</h4>
+      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin-top:10px;">
+        <div class="fbox" style="font-size:.6em;">retrieve</div>
+        <div style="color:var(--mu);padding-left:22px;font-size:.9em;">↓ always</div>
+        <div class="fbox" style="font-size:.6em;">generate</div>
+      </div>
+      <ul class="plist" style="margin-top:12px;gap:5px;">
+        <li><span class="bul bu4" style="font-size:.7em;">✗</span><span style="font-size:.68em;">No loops or retries</span></li>
+        <li><span class="bul bu4" style="font-size:.7em;">✗</span><span style="font-size:.68em;">No conditional branching</span></li>
+        <li><span class="bul bu4" style="font-size:.7em;">✗</span><span style="font-size:.68em;">No shared state across steps</span></li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h4 style="color:var(--b1);">✓ LangGraph</h4>
+      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin-top:10px;">
+        <div class="fbox fb1" style="font-size:.6em;">retrieve</div>
+        <div style="color:var(--mu);padding-left:22px;font-size:.9em;">↓</div>
+        <div class="fbox fb3" style="font-size:.6em;">grade_docs</div>
+        <div style="display:flex;gap:16px;padding-left:14px;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <div style="font-size:.62em;color:var(--b2);">↙ pass</div>
+            <div class="fbox fb2" style="font-size:.6em;">generate</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <div style="font-size:.62em;color:var(--b4);">↘ fail</div>
+            <div class="fbox fb4" style="font-size:.6em;">rewrite → loop</div>
+          </div>
+        </div>
+      </div>
+      <ul class="plist" style="margin-top:10px;gap:5px;">
+        <li><span class="bul bu2" style="font-size:.7em;">✓</span><span style="font-size:.68em;">Conditional branching based on state</span></li>
+        <li><span class="bul bu2" style="font-size:.7em;">✓</span><span style="font-size:.68em;">Loop back when quality is poor</span></li>
+        <li><span class="bul bu2" style="font-size:.7em;">✓</span><span style="font-size:.68em;">Full shared state across all nodes</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 21 — LANGGRAPH 4 CONCEPTS ══════════════════ -->
+<section>
+  <div class="eyebrow">// langgraph · 4 core concepts</div>
+  <h2 class="stitle">LangGraph — State · Nodes · Edges · Compile</h2>
+  <div class="g4" style="margin-bottom:14px;">
+    <div class="card c1">
+      <div class="card-icon">📦</div>
+      <h4>State</h4>
+      <p>A <code style="font-family:var(--mono);color:var(--b1);font-size:.9em;">TypedDict</code> shared across all nodes. Each node reads from and writes to it.</p>
+    </div>
+    <div class="card c3">
+      <div class="card-icon">⚙️</div>
+      <h4>Nodes</h4>
+      <p>Plain Python functions. Input = current state. Return = dict of updates.</p>
+    </div>
+    <div class="card c2">
+      <div class="card-icon">➡️</div>
+      <h4>Edges</h4>
+      <p>Fixed <code style="font-family:var(--mono);color:var(--b2);font-size:.9em;">A→B</code> or conditional <code style="font-family:var(--mono);color:var(--b2);font-size:.9em;">if X: B</code> routing between nodes.</p>
+    </div>
+    <div class="card c5">
+      <div class="card-icon">🔒</div>
+      <h4>Compile</h4>
+      <p>Call <code style="font-family:var(--mono);color:var(--b5);font-size:.9em;">.compile()</code> → run with <code style="font-family:var(--mono);color:var(--b5);font-size:.9em;">.invoke()</code></p>
+    </div>
+  </div>
+  <div class="arch" style="margin-top:0;">
+    <div class="arow">
+      <div class="anode ang">START</div><div class="aarr">→</div>
+      <div class="anode an1">retrieve<br/><span style="font-size:.8em;font-weight:400;color:var(--mu);">searches ChromaDB</span></div>
+      <div class="aarr">→</div>
+      <div class="anode an3">generate<br/><span style="font-size:.8em;font-weight:400;color:var(--mu);">calls GPT-4o</span></div>
+      <div class="aarr">→</div>
+      <div class="anode ang">END</div>
+    </div>
+    <div style="margin-top:8px;font-family:var(--mono);font-size:.57em;color:var(--mu);">
+      State flows through: &nbsp;<span style="color:var(--b1);">query</span> → <span style="color:var(--b2);">retrieved_docs</span> → <span style="color:var(--b3);">context</span> → <span style="color:var(--b2);">answer</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══ DIVIDER 6 ═════════════════════════════════════════ -->
+<section class="div-slide">
+  <div class="orb" style="width:400px;height:400px;background:radial-gradient(circle,rgba(56,189,248,.1),transparent 70%);top:-80px;right:-80px;"></div>
+  <div class="div-bar" style="background:var(--b1);"></div>
+  <h2 style="color:var(--b1);">Code Demo</h2>
+  <p class="div-desc">Walking through the actual working code — from PDF ingestion to LangGraph pipeline to Streamlit UI.</p>
+  <div class="sec-num">06</div>
+</section>
+
+<!-- ══ SLIDE 23 — INGESTION CODE ════════════════════════ -->
+<section>
+  <div class="eyebrow">// code · step 1 · ingestion</div>
+  <h2 class="stitle">PDF → ChromaDB</h2>
+  <div class="flow" style="margin-bottom:10px;">
+    <div class="fbox fb4">book.pdf</div><span class="farr">→</span>
+    <div class="fbox fb1">PyPDFLoader</div><span class="farr">→</span>
+    <div class="fbox fb3">TextSplitter</div><span class="farr">→</span>
+    <div class="fbox fb5">OpenAI Embed</div><span class="farr">→</span>
+    <div class="fbox fb2">ChromaDB 💾</div>
+  </div>
+  <div class="cb">
+    <span class="cb-label">rag_graph.py</span>
+<span class="kw">def</span> <span class="fn">ingest_pdf</span>(pdf_path: <span class="cl">str</span>) -> <span class="cl">Chroma</span>:
+  <span class="cm"># Step 1 — Load PDF</span>
+  pages = <span class="fn">PyPDFLoader</span>(pdf_path).<span class="fn">load</span>()
+  <span class="vr">print</span>(<span class="st">f"Loaded </span>{<span class="fn">len</span>(pages)}<span class="st"> pages"</span>)
+
+  <span class="cm"># Step 2 — Split into overlapping chunks</span>
+  chunks = <span class="fn">RecursiveCharacterTextSplitter</span>(
+    chunk_size=<span class="nm">1000</span>, chunk_overlap=<span class="nm">200</span>
+  ).<span class="fn">split_documents</span>(pages)
+  <span class="vr">print</span>(<span class="st">f"Created </span>{<span class="fn">len</span>(chunks)}<span class="st"> chunks"</span>)
+
+  <span class="cm"># Step 3 — Embed + store in ChromaDB</span>
+  <span class="kw">return</span> <span class="fn">Chroma</span>.<span class="fn">from_documents</span>(
+    documents        = chunks,
+    embedding        = <span class="fn">OpenAIEmbeddings</span>(model=<span class="st">"text-embedding-3-small"</span>),
+    collection_name  = <span class="st">"book_rag"</span>,
+    persist_directory= <span class="st">"./chroma_db"</span>,
+  )
+  </div>
+</section>
+
+<!-- ══ SLIDE 24 — GRAPH CODE ════════════════════════════ -->
+<section>
+  <div class="eyebrow">// code · step 2 · langgraph pipeline</div>
+  <h2 class="stitle">Building the RAG Graph</h2>
+  <div class="cb">
+    <span class="cb-label">rag_graph.py</span>
+<span class="cm"># ── 1. Shared State ───────────────────────────────────</span>
+<span class="kw">class</span> <span class="cl">RAGState</span>(TypedDict):
+  query: <span class="cl">str</span>;  retrieved_docs: <span class="cl">List[str]</span>;  answer: <span class="cl">str</span>
+
+<span class="cm"># ── 2. Node: retrieve ─────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">retrieve</span>(state: <span class="cl">RAGState</span>) -> <span class="cl">dict</span>:
+  docs = vectorstore.<span class="fn">similarity_search</span>(state[<span class="st">"query"</span>], k=<span class="nm">4</span>)
+  <span class="kw">return</span> {<span class="st">"retrieved_docs"</span>: [d.page_content <span class="kw">for</span> d <span class="kw">in</span> docs]}
+
+<span class="cm"># ── 3. Node: generate ─────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">generate</span>(state: <span class="cl">RAGState</span>) -> <span class="cl">dict</span>:
+  context = <span class="st">"\n\n---\n\n"</span>.<span class="fn">join</span>(state[<span class="st">"retrieved_docs"</span>])
+  resp = <span class="fn">OpenAI</span>().chat.completions.<span class="fn">create</span>(model=<span class="st">"gpt-4o"</span>, messages=[
+    {<span class="st">"role"</span>:<span class="st">"system"</span>, <span class="st">"content"</span>:<span class="st">"Answer ONLY from context."</span>},
+    {<span class="st">"role"</span>:<span class="st">"user"</span>,   <span class="st">"content"</span>:<span class="st">f"CONTEXT:\n</span>{context}<span class="st">\nQ: </span>{state[<span class="st">'query'</span>]}<span class="st">"</span>}])
+  <span class="kw">return</span> {<span class="st">"answer"</span>: resp.choices[<span class="nm">0</span>].message.content}
+
+<span class="cm"># ── 4. Build + compile ────────────────────────────────</span>
+graph = <span class="fn">StateGraph</span>(<span class="cl">RAGState</span>)
+graph.<span class="fn">add_node</span>(<span class="st">"retrieve"</span>, retrieve)
+graph.<span class="fn">add_node</span>(<span class="st">"generate"</span>, generate)
+graph.<span class="fn">add_edge</span>(START, <span class="st">"retrieve"</span>); graph.<span class="fn">add_edge</span>(<span class="st">"retrieve"</span>, <span class="st">"generate"</span>); graph.<span class="fn">add_edge</span>(<span class="st">"generate"</span>, END)
+app = graph.<span class="fn">compile</span>()
+  </div>
+</section>
+
+<!-- ══ SLIDE 25 — RUNNING + STREAMLIT ═══════════════════ -->
+<section>
+  <div class="eyebrow">// code · step 3 · running it</div>
+  <h2 class="stitle">Run a Query + Launch UI</h2>
+  <div class="g2">
+    <div>
+      <div class="cb" style="margin:0 0 12px;font-size:.57em;">
+<span class="cb-label">run a query</span>
+<span class="cm"># Invoke the full RAG pipeline</span>
+result = app.<span class="fn">invoke</span>({
+  <span class="st">"query"</span>:          <span class="st">"What is the Observer pattern?"</span>,
+  <span class="st">"retrieved_docs"</span>: [],
+  <span class="st">"answer"</span>:         <span class="st">""</span>,
+})
+
+<span class="vr">print</span>(result[<span class="st">"answer"</span>])
+<span class="cm"># "The Observer pattern defines a one-to-many</span>
+<span class="cm">#  dependency so that when one object changes</span>
+<span class="cm">#  state, all dependents are notified…"</span>
+      </div>
+      <div class="cb" style="margin:0;font-size:.57em;">
+<span class="cb-label">launch streamlit</span>
+pip install -r requirements.txt
+<span class="kw">export</span> <span class="vr">OPENAI_API_KEY</span>=sk-...
+streamlit run app.py
+      </div>
+    </div>
+    <div>
+      <div class="ccard">
+        <div class="ctitle"><div class="cdot" style="background:var(--b2);"></div>What happened under the hood</div>
+        <ul class="plist" style="gap:7px;">
+          <li><span class="bul bu1">1</span><span style="font-size:.72em;">Query embedded using <code style="font-family:var(--mono);color:var(--b1);">text-embedding-3-small</code></span></li>
+          <li><span class="bul bu1">2</span><span style="font-size:.72em;">Cosine search in ChromaDB → top 4 relevant chunks returned</span></li>
+          <li><span class="bul bu3">3</span><span style="font-size:.72em;">Chunks + question assembled into GPT-4o prompt</span></li>
+          <li><span class="bul bu2">4</span><span style="font-size:.72em;">GPT-4o answered using ONLY the book text — no hallucination</span></li>
+        </ul>
+      </div>
+      <div class="ccard" style="margin-top:10px;">
+        <div class="ctitle"><div class="cdot" style="background:var(--b3);"></div>Project files</div>
+        <div class="flow" style="margin:0;flex-direction:column;gap:4px;">
+          <div class="fbox fb1" style="font-size:.58em;width:100%;box-sizing:border-box;">rag_graph.py — LangGraph pipeline</div>
+          <div class="fbox fb2" style="font-size:.58em;width:100%;box-sizing:border-box;">app.py — Streamlit UI</div>
+          <div class="fbox fb3" style="font-size:.58em;width:100%;box-sizing:border-box;">requirements.txt — dependencies</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SLIDE 26 — SUMMARY ════════════════════════════════ -->
+<section>
+  <div class="eyebrow">// summary</div>
+  <h2 class="stitle">Everything We Covered</h2>
+  <div class="g3" style="margin-bottom:12px;">
+    <div class="card c4" style="text-align:center;"><div style="font-size:1.8em;margin-bottom:6px;">🤔</div><h4>Why RAG</h4><p>LLMs are frozen, private-data-blind, and hallucinate. RAG solves all three cheaply — no retraining needed.</p></div>
+    <div class="card c3" style="text-align:center;"><div style="font-size:1.8em;margin-bottom:6px;">⚠️</div><h4>4 Problems Solved</h4><p>Hallucination · Stale data · No private data · Fine-tuning cost — RAG addresses every one.</p></div>
+    <div class="card c1" style="text-align:center;"><div style="font-size:1.8em;margin-bottom:6px;">🏗️</div><h4>RAG Architecture</h4><p>Load → Split → Embed → Store → Retrieve → Prompt → Generate.</p></div>
+    <div class="card c2" style="text-align:center;"><div style="font-size:1.8em;margin-bottom:6px;">🔍</div><h4>6 Components</h4><p>Loader · Splitter · Embeddings · Vector Store · Retriever · Prompt Builder.</p></div>
+    <div class="card c5" style="text-align:center;"><div style="font-size:1.8em;margin-bottom:6px;">🔗</div><h4>LangChain</h4><p>Standard component library — swap any piece without rewriting anything.</p></div>
+    <div class="card c1" style="text-align:center;"><div style="font-size:1.8em;margin-bottom:6px;">🕸️</div><h4>LangGraph</h4><p>State + Nodes + Edges = stateful, branching, controllable AI workflows.</p></div>
+  </div>
+  <div class="bquote" style="font-size:.85em;margin:0;">RAG = the <em>right</em> tool to make an LLM useful on <strong>your data</strong>, <strong>today</strong>, without retraining.</div>
+</section>
+
+<!-- ══ SLIDE 27 — NEXT STEPS ════════════════════════════ -->
+<section class="title-slide">
+  <div class="orb" style="width:500px;height:500px;background:radial-gradient(circle,rgba(56,189,248,.1),transparent 70%);top:-150px;right:-100px;"></div>
+  <div class="orb" style="width:350px;height:350px;background:radial-gradient(circle,rgba(74,222,128,.07),transparent 70%);bottom:-80px;left:-80px;animation-delay:3s;"></div>
+  <div class="eyebrow">// now go build it</div>
+  <h1 style="font-size:3em;"><span class="grad">Your turn.</span></h1>
+  <ul class="plist" style="margin-top:22px;max-width:600px;">
+    <li><span class="bul bu1">1</span><span>Run the demo app — upload your own PDF and ask questions about it</span></li>
+    <li><span class="bul bu2">2</span><span>Add a <strong>grade_documents</strong> node — filter out irrelevant retrieved chunks</span></li>
+    <li><span class="bul bu2">3</span><span>Add a <strong>query_rewrite</strong> node — rephrase question for better retrieval</span></li>
+    <li><span class="bul bu3">4</span><span>Swap ChromaDB → <strong>Pinecone</strong> for cloud-scale production vector store</span></li>
+    <li><span class="bul bu4">5</span><span>Add <strong>streaming</strong> output to Streamlit for real-time token-by-token answers</span></li>
+  </ul>
+  <div class="title-tags" style="margin-top:22px;">
+    <span class="ttag tt2">langchain docs</span>
+    <span class="ttag tt1">langgraph docs</span>
+    <span class="ttag tt4">chromadb docs</span>
+    <span class="ttag tt3">openai docs</span>
+  </div>
+</section>
+
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash:true, slideNumber:'c/t',
+    transition:'fade', transitionSpeed:'fast', backgroundTransition:'fade',
+    center:false, width:1100, height:700, margin:0.03,
+    controls:true, progress:true,
+  });
+</script>
+</body>
+</html>
